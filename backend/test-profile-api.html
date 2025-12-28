@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile API Tester</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .response {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            border-left: 4px solid #667eea;
+        }
+        .success {
+            border-left-color: #10b981;
+            background: #d1fae5;
+        }
+        .error {
+            border-left-color: #ef4444;
+            background: #fee2e2;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        label {
+            font-weight: 600;
+            color: #374151;
+            display: block;
+            margin-top: 10px;
+        }
+        .form-section {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🩸 Profile API Tester</h1>
+        
+        <div class="form-section">
+            <h3>Create/Update Profile</h3>
+            <label>Age Group:</label>
+            <select id="ageGroup">
+                <option>18-25</option>
+                <option>26-35</option>
+                <option>36-45</option>
+                <option>46+</option>
+            </select>
+
+            <label>Country:</label>
+            <input type="text" id="country" value="India">
+
+            <label>Language:</label>
+            <input type="text" id="language" value="English">
+
+            <label>Religion:</label>
+            <input type="text" id="religion" value="Hindu">
+
+            <label>Diet:</label>
+            <select id="diet">
+                <option>Vegetarian</option>
+                <option>Non-Vegetarian</option>
+                <option>Vegan</option>
+            </select>
+
+            <label>Accessibility:</label>
+            <input type="text" id="accessibility" value="None">
+        </div>
+
+        <button onclick="saveProfile()">💾 Save Profile</button>
+        <button onclick="getProfile()">📥 Get Profile</button>
+        
+        <div id="response"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/profile';
+
+        async function saveProfile() {
+            const data = {
+                ageGroup: document.getElementById('ageGroup').value,
+                country: document.getElementById('country').value,
+                language: document.getElementById('language').value,
+                religion: document.getElementById('religion').value,
+                diet: document.getElementById('diet').value,
+                accessibility: document.getElementById('accessibility').value
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                displayResponse(result, response.ok);
+            } catch (error) {
+                displayResponse({ error: error.message }, false);
+            }
+        }
+
+        async function getProfile() {
+            try {
+                const response = await fetch(API_URL);
+                const result = await response.json();
+                displayResponse(result, response.ok);
+            } catch (error) {
+                displayResponse({ error: error.message }, false);
+            }
+        }
+
+        function displayResponse(data, isSuccess) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.className = 'response ' + (isSuccess ? 'success' : 'error');
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html>
