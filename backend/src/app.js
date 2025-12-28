@@ -11,6 +11,7 @@ const authMiddleware = require('./middlewares/auth.middleware');
 const profileRoutes = require('./config/profile.routes');
 const cycleRoutes = require('./routes/cycle.routes');
 const aiRoutes = require('./routes/ai.routes');
+const foodRoutes = require('./routes/food.routes');
 
 app.use('/profile', profileRoutes);
 console.log('✅ Profile routes registered at /profile');
@@ -20,6 +21,9 @@ console.log('✅ Cycle routes registered at /cycle');
 
 app.use('/ai', aiRoutes);
 console.log('✅ AI routes registered at /ai');
+
+app.use('/food', foodRoutes);
+console.log('✅ Food routes registered at /food');
 
 app.get('/protected', authMiddleware, (req, res) => {
     res.status(200).json({
