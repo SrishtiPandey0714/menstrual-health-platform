@@ -1,6 +1,7 @@
 const Profile = require('../models/Profile');
 const CycleLog = require('../models/CycleLog');
 const { getAIResponse } = require('../services/openai.service');
+const { translateText } = require('../services/translator.service');
 
 exports.askAI = async (req, res) => {
     try {
@@ -9,6 +10,12 @@ exports.askAI = async (req, res) => {
 
         const profile = await Profile.findOne({ userId });
         const recentLogs = await CycleLog.find({ userId }).sort({ date: -1 }).limit(3);
+
+        // Get user's language preference (default to English)
+        const userLang = profile?.language || 'en';
+
+        // Translate question to English for AI processing
+        const translatedQuestion = await translateText(question, 'en');
 
         const messages = [
             {
@@ -33,13 +40,16 @@ Recent symptoms: ${recentLogs.map(l => l.symptoms).join(', ')}
             },
             {
                 role: 'user',
-                content: question,
+                content: translatedQuestion,
             },
         ];
 
         const answer = await getAIResponse(messages);
 
-        res.status(200).json({ answer });
+        // Translate answer back to user's language
+        const translatedAnswer = await translateText(answer, userLang);
+
+        res.status(200).json({ answer: translatedAnswer });
     } catch (error) {
         res.status(500).json({ message: 'AI service failed' });
     }
