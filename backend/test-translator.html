@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Translator Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+        }
+
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🌍 Azure Translator Test</h1>
+        <p class="subtitle">Test your Azure AI Translator integration</p>
+
+        <div class="test-section">
+            <h3>Single Translation</h3>
+            <input type="text" id="textInput" placeholder="Enter text to translate (e.g., 'Hello, how are you?')"
+                value="Welcome to your menstrual health dashboard">
+            <select id="langSelect">
+                <option value="hi">Hindi (हिन्दी)</option>
+                <option value="bn">Bengali (বাংলা)</option>
+                <option value="es">Spanish (Español)</option>
+                <option value="fr">French (Français)</option>
+                <option value="ta">Tamil (தமிழ்)</option>
+                <option value="te">Telugu (తెలుగు)</option>
+                <option value="ar">Arabic (العربية)</option>
+            </select>
+            <button onclick="testTranslation()">🚀 Translate</button>
+            <div id="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Batch Translation (Multiple Texts)</h3>
+            <button onclick="testBatchTranslation()">🚀 Test Batch Translation</button>
+            <div id="batchResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/translate';
+
+        async function testTranslation() {
+            const text = document.getElementById('textInput').value;
+            const targetLang = document.getElementById('langSelect').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!text) {
+                alert('Please enter some text to translate');
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading">⏳ Translating...</div>';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text, targetLang })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <strong>✅ Translation Successful!</strong><br><br>
+                            <strong>Original:</strong> ${data.originalText}<br>
+                            <strong>Translated (${targetLang}):</strong> ${data.translatedText}<br>
+                            <strong>Language:</strong> ${document.getElementById('langSelect').options[document.getElementById('langSelect').selectedIndex].text}
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.message || 'Translation failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testBatchTranslation() {
+            const resultDiv = document.getElementById('batchResult');
+            const texts = [
+                'Track your cycle',
+                'AI Assistant',
+                'Daily tips',
+                'Health insights'
+            ];
+            const targetLang = 'hi';
+
+            resultDiv.innerHTML = '<div class="loading">⏳ Translating multiple texts...</div>';
+
+            try {
+                const response = await fetch(`${API_URL}/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ texts, targetLang })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const translationList = texts.map((text, i) =>
+                        `<li><strong>${text}</strong> → ${data.translations[i]}</li>`
+                    ).join('');
+
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <strong>✅ Batch Translation Successful!</strong><br><br>
+                            <ul>${translationList}</ul>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.message || 'Batch translation failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+
+</html>
