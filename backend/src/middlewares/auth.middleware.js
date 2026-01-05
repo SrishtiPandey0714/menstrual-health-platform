@@ -22,6 +22,26 @@ module.exports = function (req, res, next) {
 
     const token = authHeader.split(' ')[1];
 
+    // Check if using mock authentication (development mode)
+    if (process.env.USE_MOCK_AUTH === 'true' || token.endsWith('.mock_signature')) {
+        try {
+            // Decode mock token (base64 encoded, not signed)
+            const parts = token.split('.');
+            if (parts.length < 2) {
+                return res.status(401).json({ message: 'Invalid mock token format' });
+            }
+
+            const payload = JSON.parse(atob(parts[1]));
+            console.log('🔐 Mock auth - User:', payload.sub);
+            req.user = payload;
+            return next();
+        } catch (error) {
+            console.error('Mock token decode error:', error);
+            return res.status(401).json({ message: 'Invalid mock token' });
+        }
+    }
+
+    // Production: Real JWT verification
     jwt.verify(
         token,
         getKey,
