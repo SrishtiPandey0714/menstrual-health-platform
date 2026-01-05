@@ -1,21 +1,31 @@
 const axios = require('axios');
 
-// Check if Azure Translator is configured
-const isTranslatorConfigured = process.env.AZURE_TRANSLATOR_KEY &&
-    process.env.AZURE_TRANSLATOR_ENDPOINT &&
-    process.env.AZURE_TRANSLATOR_REGION;
-
 exports.translateText = async (text, targetLang) => {
     // If target language is English or not specified, return original text
     if (!targetLang || targetLang === 'en' || targetLang.toLowerCase() === 'english') {
         return text;
     }
 
+    // Check if Azure Translator is configured (at runtime, not at module load)
+    const isTranslatorConfigured = !!(process.env.AZURE_TRANSLATOR_KEY &&
+        process.env.AZURE_TRANSLATOR_ENDPOINT &&
+        process.env.AZURE_TRANSLATOR_REGION);
+
+    // Debug logging
+    console.log('🔍 Azure Translator Config Check:', {
+        hasKey: !!process.env.AZURE_TRANSLATOR_KEY,
+        hasEndpoint: !!process.env.AZURE_TRANSLATOR_ENDPOINT,
+        hasRegion: !!process.env.AZURE_TRANSLATOR_REGION,
+        isConfigured: isTranslatorConfigured
+    });
+
     // If Azure Translator isn't configured, return mock response
     if (!isTranslatorConfigured) {
-        console.warn('⚠️  Azure Translator not configured. Returning original text.');
+        console.warn('⚠️  Azure Translator not configured. Returning mock translation.');
         return `[Mock Translation to ${targetLang}] ${text}`;
     }
+
+    console.log(`✅ Using Azure Translator for ${targetLang} translation`);
 
     try {
         const response = await axios.post(
