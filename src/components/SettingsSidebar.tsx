@@ -1,33 +1,19 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { User, Lock, LogOut, Trash2 } from 'lucide-react';
 
-type SettingsTab = 'setting' | 'preferences' | 'security' | 'notifications';
-
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  href: string;
-}
+type SettingsTab = 'profile' | 'preferences' | 'security' | 'notifications';
 
 const SettingsSidebar = () => {
   const pathname = usePathname();
-  const [activeTab, setActiveTab] = useState('setting');
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const activeTab = pathSegments.length > 1 ? pathSegments[1] : 'settings';
 
-  useEffect(() => {
-    if (pathname) {
-      const pathSegments = pathname.split('/').filter(Boolean);
-      setActiveTab(pathSegments[1] || 'setting');
-    }
-  }, [pathname]);
-
-  const menuItems: MenuItem[] = [
-    { id: 'setting', label: 'Profile', icon: <User className="w-5 h-5" />, href: '/setting' },
-    { id: 'preferences', label: 'Preferences', icon: <Lock className="w-5 h-5" />, href: '/setting/preferences' },
+  const menuItems = [
+    { id: 'settings', label: 'Profile', icon: <User className="w-5 h-5" />, href: '/settings' },
+    { id: 'preferences', label: 'Preferences', icon: <Lock className="w-5 h-5" />, href: '/settings/preferences' },
   ];
 
   return (

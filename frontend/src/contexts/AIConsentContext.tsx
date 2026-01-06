@@ -9,7 +9,7 @@ type AIConsentContextType = {
 
 const AIConsentContext = createContext<AIConsentContextType | undefined>(undefined);
 
-export function AIConsentProvider({ children }: { children: ReactNode }) {
+export function AIConsentProvider({ children }: { children?: ReactNode }) {
   const [hasAIConsent, setHasAIConsent] = useState<boolean>(false);
 
   // Load consent from localStorage on mount

@@ -10,7 +10,6 @@ const ProfilePage = () => {
     email: 'jane@example.com',
     phone: '+1 (555) 123-4567',
     joinDate: 'January 2023',
-    avatar: '/default-avatar.png'
   };
 
   return (
@@ -19,25 +18,16 @@ const ProfilePage = () => {
         {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-8 sm:px-10">
-            <div className="flex flex-col sm:flex-row items-center">
-              <div className="flex-shrink-0">
-                <img
-                  className="h-24 w-24 rounded-full object-cover"
-                  src={user.avatar}
-                  alt={user.name}
-                />
-              </div>
-              <div className="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
-                <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-                <p className="text-sm text-gray-500">Member since {user.joinDate}</p>
-                <Link
-                  href="/setting"
-                  className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
-                >
-                  <FiSettings className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Link>
-              </div>
+            <div className="text-center sm:text-left">
+              <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+              <p className="text-sm text-gray-500">Member since {user.joinDate}</p>
+              <Link
+                href="/setting"
+                className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+              >
+                <FiSettings className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Link>
             </div>
           </div>
 

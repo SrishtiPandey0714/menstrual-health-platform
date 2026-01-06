@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { FiArrowRight, FiCheckCircle, FiShield, FiGlobe, FiHeart } from 'react-icons/fi';
 
 export default function Home() {
@@ -47,9 +48,9 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative z-10 pb-8 bg-white sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
+      <div className="relative overflow-hidden bg-white">
+        <div className="max-w-7xl mx-auto lg:grid lg:grid-cols-2 lg:gap-8">
+          <div className="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:pb-28 xl:pb-32">
             <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
               <div className="sm:text-center lg:text-left">
                 <motion.h1
@@ -102,13 +103,31 @@ export default function Home() {
               </div>
             </main>
           </div>
-        </div>
-        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-          <img
-            className="h-56 w-full object-cover sm:h-72 md:h-96 lg:w-full lg:h-full"
-            src="https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80"
-            alt="Happy diverse women supporting each other"
-          />
+          <div className="relative lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
+            <div className="relative h-56 w-full sm:h-72 md:h-96 lg:w-full lg:h-full bg-gradient-to-r from-pink-50 to-pink-100 overflow-hidden">
+              <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative w-[300px] h-[300px] md:w-[400px] md:h-[400px] lg:w-[500px] lg:h-[500px]">
+                  <Image
+                    src="/logo.png"
+                    alt="Empowering menstrual health"
+                    fill
+                    className="object-cover object-center scale-125"
+                    style={{
+                      objectPosition: 'center 20%',
+                      transform: 'scale(1.5)'
+                    }}
+                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                      console.log('Using fallback styling');
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                    priority
+                    unoptimized={process.env.NODE_ENV !== 'production'}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -189,36 +208,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-white">
-        <div className="max-w-7xl mx-auto py-12 px-4 overflow-hidden sm:px-6 lg:px-8">
-          <nav className="-mx-5 -my-2 flex flex-wrap justify-center" aria-label="Footer">
-            <div className="px-5 py-2">
-              <a href="#" className="text-base text-gray-500 hover:text-gray-900">
-                About
-              </a>
-            </div>
-            <div className="px-5 py-2">
-              <a href="#" className="text-base text-gray-500 hover:text-gray-900">
-                Blog
-              </a>
-            </div>
-            <div className="px-5 py-2">
-              <a href="#" className="text-base text-gray-500 hover:text-gray-900">
-                Privacy
-              </a>
-            </div>
-            <div className="px-5 py-2">
-              <a href="#" className="text-base text-gray-500 hover:text-gray-900">
-                Terms
-              </a>
-            </div>
-          </nav>
-          <p className="mt-8 text-center text-base text-gray-400">
-            &copy; {new Date().getFullYear()} CycleCare. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      
     </div>
   );
 }

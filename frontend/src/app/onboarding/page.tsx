@@ -98,7 +98,7 @@ export default function Onboarding() {
                       name="consent"
                       type="checkbox"
                       checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConsent(e.target.checked)}
                       className="focus:ring-pink-500 h-4 w-4 text-pink-600 border-gray-300 rounded"
                     />
                   </div>
@@ -118,7 +118,7 @@ export default function Onboarding() {
                       name="aiConsent"
                       type="checkbox"
                       checked={aiConsent}
-                      onChange={(e) => setAIConsent(e.target.checked)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAIConsent(e.target.checked)}
                       className="focus:ring-pink-500 h-4 w-4 text-pink-600 border-gray-300 rounded"
                     />
                   </div>
