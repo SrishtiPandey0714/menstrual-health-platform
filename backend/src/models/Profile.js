@@ -9,9 +9,12 @@ const ProfileSchema = new mongoose.Schema({
     ageGroup: String,
     country: String,
     language: String,
+    gender: String,
     religion: String,
     diet: String,
+    dietaryRestrictions: String,
     accessibility: String,
+    aiConsent: Boolean,
 }, {
     timestamps: true
 });

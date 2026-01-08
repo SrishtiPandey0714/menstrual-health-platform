@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/contexts/TranslationContext';
 import SettingsSidebar from '@/components/SettingsSidebar';
 
 type UserProfile = {
@@ -10,21 +11,117 @@ type UserProfile = {
   phone?: string;
   birthDate?: string;
   gender?: string;
+  diet?: string;
+  dietaryRestrictions?: string;
+  allergies?: string[];
+  dietaryPreferences?: string[];
+  language?: string;
 };
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true); // Allow editing by default
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+  const [selectedLanguage, setSelectedLanguage] = useState(language);
+
   const [profile, setProfile] = useState<UserProfile>({
-    name: 'Jane Doe',
-    email: 'jane@example.com',
+    name: '',
+    email: '',
     phone: '',
     birthDate: '',
-    gender: ''
+    gender: '',
+    diet: '',
+    dietaryRestrictions: '',
+    allergies: [],
+    dietaryPreferences: []
   });
+
+  const availableLanguages = [
+    { code: 'en', name: t('languages.en') },
+    { code: 'es', name: t('languages.es') },
+    { code: 'fr', name: t('languages.fr') },
+    { code: 'hi', name: t('languages.hi') },
+    { code: 'de', name: t('languages.de') },
+    { code: 'pt', name: t('languages.pt') },
+  ];
+
+  // Fetch real user data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const storedUser = localStorage.getItem('auth_user');
+
+        if (!token || !storedUser) {
+          router.push('/login');
+          return;
+        }
+
+        const userData = JSON.parse(storedUser);
+
+        // Fetch profile from backend
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const profileData = data.profile || data; // Handle both nested and flat responses
+
+          // Map database arrays to form strings
+          const diet = profileData.dietaryPreferences && profileData.dietaryPreferences.length > 0
+            ? profileData.dietaryPreferences[0]
+            : '';
+          const allergies = profileData.allergies && profileData.allergies.length > 0
+            ? profileData.allergies.join(', ')
+            : '';
+
+          setProfile({
+            name: profileData.fullName || profileData.name || userData.email?.split('@')[0] || '',
+            email: userData.email || '',
+            phone: profileData.phone || '',
+            birthDate: profileData.birthDate || '',
+            gender: profileData.gender || '',
+            diet: diet,
+            dietaryRestrictions: allergies,
+            allergies: profileData.allergies || [],
+            dietaryPreferences: profileData.dietaryPreferences || [],
+            language: profileData.language || 'en'
+          });
+          // Also set selected language
+          if (profileData.language) {
+            setSelectedLanguage(profileData.language);
+          }
+        } else {
+          // If profile fetch fails, use basic data from stored user
+          setProfile({
+            name: userData.email?.split('@')[0] || '',
+            email: userData.email || '',
+            phone: '',
+            birthDate: '',
+            gender: '',
+            diet: '',
+            dietaryRestrictions: '',
+            allergies: [],
+            dietaryPreferences: []
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [router]);
+
+  useEffect(() => {
+    setSelectedLanguage(language);
+  }, [language]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -34,25 +131,62 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      // Get real auth token
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        alert('Please log in again');
+        router.push('/login');
+        return;
+      }
+
+      // Save to backend
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          language: selectedLanguage,
+          fullName: profile.name,
+          phone: profile.phone,
+          birthDate: profile.birthDate,
+          gender: profile.gender,
+          diet: profile.diet,
+          dietaryRestrictions: profile.dietaryRestrictions,
+        }),
+      });
+
+      if (response.ok) {
+        // Update global language context if changed
+        if (selectedLanguage !== language) {
+          setLanguage(selectedLanguage);
+        }
+        alert(t('profile.saveSuccess') || 'Profile updated successfully!');
+        setIsEditing(false);
+      } else {
+        throw new Error('Failed to save profile');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert(t('profile.saveError') || 'Failed to save profile. Please try again.');
+    } finally {
       setIsLoading(false);
-      setIsEditing(false);
-      // Show success message
-      alert('Profile updated successfully!');
-    }, 1000);
+    }
   };
 
   const handleExportData = () => {
     setIsLoading(true);
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      alert('Your data export has started. You will receive an email when it\'s ready.');
+      alert(t('profile.updateSuccess'));
     }, 1500);
   };
 
@@ -63,9 +197,8 @@ export default function SettingsPage() {
     }
 
     setIsLoading(true);
-    // Simulate API call
     setTimeout(() => {
-      alert('Your account and all associated data have been permanently deleted.');
+      alert(t('settings.deleteAccountConfirm'));
       router.push('/');
     }, 2000);
   };
@@ -73,21 +206,21 @@ export default function SettingsPage() {
   return (
     <div className="flex h-screen bg-gray-50">
       <SettingsSidebar />
-      
+
       <main className="flex-1 ml-64 p-8 overflow-auto">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-                <p className="text-sm text-gray-500">Manage your personal information</p>
+                <h1 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h1>
+                <p className="text-sm text-gray-500">{t('settings.subtitle')}</p>
               </div>
               {!isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
                   className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
                 >
-                  Edit Profile
+                  {t('settings.editProfile')}
                 </button>
               )}
             </div>
@@ -96,7 +229,7 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Full Name
+                    {t('settings.fullName')}
                   </label>
                   <input
                     type="text"
@@ -111,7 +244,7 @@ export default function SettingsPage() {
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email Address
+                    {t('settings.emailAddress')}
                   </label>
                   <input
                     type="email"
@@ -126,7 +259,7 @@ export default function SettingsPage() {
 
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Phone Number
+                    {t('settings.phoneNumber')}
                   </label>
                   <input
                     type="tel"
@@ -136,13 +269,13 @@ export default function SettingsPage() {
                     onChange={handleProfileChange}
                     disabled={!isEditing}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder={t('settings.phonePlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700">
-                    Date of Birth
+                    {t('settings.dateOfBirth')}
                   </label>
                   <input
                     type="date"
@@ -157,7 +290,7 @@ export default function SettingsPage() {
 
                 <div>
                   <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
-                    Gender
+                    {t('settings.gender')}
                   </label>
                   <select
                     id="gender"
@@ -167,12 +300,71 @@ export default function SettingsPage() {
                     disabled={!isEditing}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
                   >
-                    <option value="">Select gender</option>
-                    <option value="female">Female</option>
-                    <option value="male">Male</option>
-                    <option value="other">Other</option>
-                    <option value="prefer-not-to-say">Prefer not to say</option>
+                    <option value="">{t('settings.selectGender')}</option>
+                    <option value="female">{t('settings.female')}</option>
+                    <option value="male">{t('settings.male')}</option>
+                    <option value="other">{t('settings.other')}</option>
+                    <option value="prefer_not_to_say">{t('settings.preferNotToSay')}</option>
                   </select>
+                </div>
+
+                <div>
+                  <label htmlFor="diet" className="block text-sm font-medium text-gray-700">
+                    {t('settings.dietPreference')}
+                  </label>
+                  <select
+                    id="diet"
+                    name="diet"
+                    value={profile.diet}
+                    onChange={handleProfileChange}
+                    disabled={!isEditing}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    <option value="">{t('settings.selectDiet')}</option>
+                    <option value="Non-vegetarian">Non-vegetarian</option>
+                    <option value="Vegetarian">Vegetarian</option>
+                    <option value="Vegan">Vegan</option>
+                    <option value="Pescatarian">Pescatarian</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="dietaryRestrictions" className="block text-sm font-medium text-gray-700">
+                    {t('settings.allergies')}
+                  </label>
+                  <input
+                    type="text"
+                    id="dietaryRestrictions"
+                    name="dietaryRestrictions"
+                    value={profile.dietaryRestrictions}
+                    onChange={handleProfileChange}
+                    disabled={!isEditing}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                    placeholder={t('settings.allergiesPlaceholder')}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{t('settings.allergiesHelp')}</p>
+                </div>
+
+                {/* Language Preference */}
+                <div>
+                  <label htmlFor="language" className="block text-sm font-medium text-gray-700">
+                    {t('settings.languagePreference')}
+                  </label>
+                  <select
+                    id="language"
+                    name="language"
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    disabled={!isEditing}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    {availableLanguages.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">{t('settings.selectLanguage')}</p>
                 </div>
 
                 {isEditing && (
@@ -182,14 +374,14 @@ export default function SettingsPage() {
                       onClick={() => setIsEditing(false)}
                       className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
                       disabled={isLoading}
                       className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:opacity-50"
                     >
-                      {isLoading ? 'Saving...' : 'Save Changes'}
+                      {isLoading ? t('common.saving') : t('common.saveChanges')}
                     </button>
                   </div>
                 )}
@@ -198,29 +390,28 @@ export default function SettingsPage() {
 
             {/* Danger Zone */}
             <div className="mt-12 pt-8 border-t border-gray-200">
-              <h2 className="text-lg font-medium text-red-700">Danger Zone</h2>
+              <h2 className="text-lg font-medium text-red-700">{t('settings.dangerZone')}</h2>
               <p className="mt-1 text-sm text-gray-500">
-                These actions are irreversible. Please be certain.
+                {t('settings.dangerZoneDesc')}
               </p>
 
               <div className="mt-6 space-y-4">
                 <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
                   <div>
-                    <h3 className="text-sm font-medium text-red-800">Delete account</h3>
+                    <h3 className="text-sm font-medium text-red-800">{t('settings.deleteAccount')}</h3>
                     <p className="text-sm text-red-600">
-                      {showDeleteConfirm 
-                        ? 'Are you sure? This will permanently delete all your data.' 
-                        : 'Permanently delete your account and all of your data.'}
+                      {showDeleteConfirm
+                        ? t('settings.deleteAccountConfirm')
+                        : t('settings.deleteAccountDesc')}
                     </p>
                   </div>
                   <button
                     onClick={handleDeleteAccount}
                     disabled={isLoading}
-                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                      showDeleteConfirm ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
-                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50`}
+                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${showDeleteConfirm ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50`}
                   >
-                    {showDeleteConfirm ? 'Confirm Deletion' : 'Delete Account'}
+                    {showDeleteConfirm ? t('settings.confirmDeletion') : t('settings.deleteAccount')}
                   </button>
                 </div>
               </div>

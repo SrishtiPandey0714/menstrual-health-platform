@@ -26,39 +26,82 @@ export default function Onboarding() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Check if user is under 13
     if (formData.ageGroup === 'under13') {
       setAgeError('You must be at least 13 years old to use this platform.');
       return;
     }
-    
+
     // Check for required fields
     const requiredFields = ['ageGroup', 'country', 'language', 'gender', 'diet', 'accessibility'];
     const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
-    
+
     if (missingFields.length > 0) {
-      // You could add more specific error handling here
       alert('Please fill in all required fields.');
       return;
     }
-    
+
     // Clear any previous errors
     setAgeError('');
-    
+
     // Include AI consent in the form data
     const submissionData = {
       ...formData,
       aiConsent
     };
-    
-    // Here you would typically send the data to your backend
-    console.log('Form submitted:', submissionData);
-    
-    // The AI consent is already managed by the AIConsentContext
-    router.push('/dashboard');
+
+    try {
+      // Call backend API to save profile using auth utility
+      const { apiCall } = await import('@/lib/auth');
+
+      // User must be authenticated before reaching onboarding
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      if (!token) {
+        alert('Please log in to continue');
+        router.push('/login');
+        return;
+      }
+
+      const response = await apiCall('/api/auth/profile', {
+        method: 'POST',
+        body: JSON.stringify(submissionData),
+      });
+
+      if (!response.ok) {
+        // Try to get error details
+        const errorText = await response.text();
+        console.error('Profile save error:', errorText);
+
+        // Try to parse as JSON, otherwise show the text
+        try {
+          const errorJson = JSON.parse(errorText);
+          alert(`Failed to save profile: ${errorJson.message || 'Please try again.'}`);
+        } catch {
+          alert(`Failed to save profile: ${errorText || 'Please try again.'}`);
+        }
+        return;
+      }
+
+      const savedProfile = await response.json();
+      console.log('✅ Profile saved successfully:', savedProfile);
+
+      // Update user data in localStorage to mark onboarding complete
+      const storedUser = localStorage.getItem('auth_user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        userData.hasCompletedOnboarding = true;
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+      }
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('An error occurred while saving your profile. Please try again.');
+    }
   };
 
   const nextStep = () => {
@@ -137,9 +180,8 @@ export default function Onboarding() {
                     type="button"
                     onClick={nextStep}
                     disabled={!consent}
-                    className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                      consent ? 'bg-pink-600 hover:bg-pink-700' : 'bg-pink-300 cursor-not-allowed'
-                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500`}
+                    className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${consent ? 'bg-pink-600 hover:bg-pink-700' : 'bg-pink-300 cursor-not-allowed'
+                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500`}
                   >
                     Continue
                   </button>

@@ -1,11 +1,9 @@
 const User = require('../models/User');
-const CycleLog = require('../models/CycleLog');
-const { getCyclePhase } = require('../utils/cyclePhase');
-const { getFoodSuggestions } = require('../services/food.service');
+const { getBeverageSuggestions } = require('../services/beverage.service');
 
-exports.getFoodGuidance = async (req, res) => {
+exports.getBeverages = async (req, res) => {
     try {
-        // Extract user ID from token (same logic as profile controller)
+        // Extract user ID from token (same logic as food controller)
         const token = req.headers.authorization?.replace('Bearer ', '');
         if (!token) {
             return res.status(401).json({ message: 'No token provided' });
@@ -22,7 +20,6 @@ exports.getFoodGuidance = async (req, res) => {
         // Get phase from query params OR default to 'menstrual'
         let phase = req.query.phase;
 
-        // If phase is 'unknown' or invalid, default to 'menstrual'
         const validPhases = ['menstrual', 'follicular', 'ovulation', 'luteal'];
         if (!phase || !validPhases.includes(phase)) {
             phase = 'menstrual';
@@ -33,11 +30,11 @@ exports.getFoodGuidance = async (req, res) => {
 
         if (!user) {
             console.log('⚠️  No user found - using fallback');
-            const suggestions = await getFoodSuggestions(phase, null);
+            const suggestions = await getBeverageSuggestions(phase, null);
             return res.status(200).json({ phase, ...suggestions });
         }
 
-        // Map User model to profile format expected by food service
+        // Map User model to profile format expected by beverage service
         const profile = {
             country: user.country || 'USA',
             language: user.language || 'en', // User's selected language preference
@@ -50,31 +47,27 @@ exports.getFoodGuidance = async (req, res) => {
                 : 'none'
         };
 
-        console.log(`📊 Food API: phase=${phase}, country=${profile.country}, language=${profile.language}, age=${profile.ageGroup}, diet=${profile.diet}, allergies=${profile.dietaryRestrictions}`);
+        console.log(`📊 Beverage API: phase=${phase}, country=${profile.country}, language=${profile.language}, age=${profile.ageGroup}, diet=${profile.diet}, allergies=${profile.dietaryRestrictions}`);
 
-        // Get food suggestions in English
-        const suggestions = await getFoodSuggestions(phase, profile);
+        // Get beverage suggestions in English
+        const suggestions = await getBeverageSuggestions(phase, profile);
 
-        console.log(`✅ Food API Response: ${suggestions.foods?.length || 0} foods returned`);
+        console.log(`✅ Beverage API Response: ${suggestions.beverages?.length || 0} beverages returned`);
 
         // Translate to user's language if not English
         if (profile.language && profile.language !== 'en') {
-            console.log(`🌐 Translating food to ${profile.language}...`);
-            const { translateBatch } = require('../services/translator.service');
+            console.log(`🌐 Translating beverages to ${profile.language}...`);
+            const { translateBatch, translateText } = require('../services/translator.service');
 
             try {
                 // Translate all text fields
-                const [translatedFoods, translatedTips, translatedFocus, translatedAgeTip] = await Promise.all([
-                    translateBatch(suggestions.foods || [], profile.language),
-                    translateBatch(suggestions.lifestyleTips || [], profile.language),
-                    require('../services/translator.service').translateText(suggestions.nutritionalFocus || '', profile.language),
-                    require('../services/translator.service').translateText(suggestions.ageSpecificTip || '', profile.language)
+                const [translatedBeverages, translatedTips] = await Promise.all([
+                    translateBatch(suggestions.beverages || [], profile.language),
+                    translateBatch(suggestions.hydrationTips || [], profile.language)
                 ]);
 
-                suggestions.foods = translatedFoods;
-                suggestions.lifestyleTips = translatedTips;
-                suggestions.nutritionalFocus = translatedFocus;
-                suggestions.ageSpecificTip = translatedAgeTip;
+                suggestions.beverages = translatedBeverages;
+                suggestions.hydrationTips = translatedTips;
 
                 console.log(`✅ Translation complete to ${profile.language}`);
             } catch (translationError) {
@@ -88,8 +81,8 @@ exports.getFoodGuidance = async (req, res) => {
             ...suggestions,
         });
     } catch (error) {
-        console.error('❌ Food guidance error:', error);
-        res.status(500).json({ message: 'Failed to fetch food guidance', error: error.message });
+        console.error('❌ Beverage guidance error:', error);
+        res.status(500).json({ message: 'Failed to fetch beverage guidance', error: error.message });
     }
 };
 

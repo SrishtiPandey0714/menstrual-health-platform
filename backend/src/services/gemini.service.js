@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 // Check if Gemini API is configured
+console.log('DEBUG: GEMINI_API_KEY =', process.env.GEMINI_API_KEY ? `SET (${process.env.GEMINI_API_KEY.length} chars)` : 'NOT SET');
 const isGeminiConfigured = !!process.env.GEMINI_API_KEY;
 
 if (isGeminiConfigured) {
@@ -18,19 +19,22 @@ exports.getAIResponse = async (messages) => {
 
     try {
         // Convert messages array to a single prompt for Gemini
-        const systemMessage = messages.find(m => m.role === 'system');
+        const systemMessages = messages.filter(m => m.role === 'system');
         const userMessage = messages.find(m => m.role === 'user');
 
+        // Combine ALL system messages (this was the bug!)
+        const systemPrompt = systemMessages.map(m => m.content).join('\n\n');
+
         // Combine system context with user question
-        const fullPrompt = systemMessage
-            ? `${systemMessage.content}\n\nUser question: ${userMessage.content}`
+        const fullPrompt = systemPrompt
+            ? `${systemPrompt}\n\nUser question: ${userMessage.content}`
             : userMessage.content;
 
-        console.log('🤖 Calling Gemini API via HTTP...');
+        console.log('🤖 Calling Gemini API with FULL prompt (including language instruction)...');
 
-        // Call Gemini REST API - trying v1 endpoint (v1beta has model availability issues)
+        // Call Gemini REST API - using gemini-2.5-flash (current available model)
         const apiKey = process.env.GEMINI_API_KEY;
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
         const response = await axios.post(url, {
             contents: [{

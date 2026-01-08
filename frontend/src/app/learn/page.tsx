@@ -1,8 +1,9 @@
 // src/app/learn/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, Lightbulb, Heart, Users, MessageSquare, Search, ChevronDown } from 'lucide-react';
+import { useTranslation } from '@/contexts/TranslationContext';
 
 type Resource = {
   id: string;
@@ -13,6 +14,8 @@ type Resource = {
   language: string;
   readTime?: string;
   isNew?: boolean;
+  translatedTitle?: string; // For displaying translated title
+  translatedContent?: string; // For displaying translated content
 };
 
 const resources: Resource[] = [
@@ -82,17 +85,83 @@ const categoryColors = {
 } as const;
 
 export default function EducationalHub() {
+  const { language, t } = useTranslation();
   const [filters, setFilters] = useState({
     category: 'all',
     audience: 'all',
-    language: 'en'
+    language: language || 'en'
   });
+  const [translatedResources, setTranslatedResources] = useState<Resource[]>(resources);
+  const [isTranslating, setIsTranslating] = useState(false);
 
-  const filteredResources = resources.filter(resource => {
+  // Update filter language when context language changes
+  useEffect(() => {
+    if (language) {
+      setFilters(prev => ({ ...prev, language }));
+    }
+  }, [language]);
+
+  // Translate articles when language changes
+  useEffect(() => {
+    async function translateArticles() {
+      if (!language || language === 'en') {
+        // If English, use original articles
+        setTranslatedResources(resources);
+        return;
+      }
+
+      setIsTranslating(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        // Translate all articles in batch
+        const translatedArticles = await Promise.all(
+          resources.map(async (article) => {
+            try {
+              const [titleResponse, contentResponse] = await Promise.all([
+                fetch(`${API_URL}/api/translate`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: article.title, targetLang: language })
+                }),
+                fetch(`${API_URL}/api/translate`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: article.content, targetLang: language })
+                })
+              ]);
+
+              const titleData = await titleResponse.json();
+              const contentData = await contentResponse.json();
+
+              return {
+                ...article,
+                translatedTitle: titleData.translatedText || article.title,
+                translatedContent: contentData.translatedText || article.content
+              };
+            } catch (error) {
+              console.error(`Failed to translate article ${article.id}:`, error);
+              return { ...article, translatedTitle: article.title, translatedContent: article.content };
+            }
+          })
+        );
+
+        setTranslatedResources(translatedArticles);
+      } catch (error) {
+        console.error('Translation error:', error);
+        setTranslatedResources(resources);
+      } finally {
+        setIsTranslating(false);
+      }
+    }
+
+    translateArticles();
+  }, [language]);
+
+  const filteredResources = translatedResources.filter(resource => {
     return (
       (filters.category === 'all' || resource.category === filters.category) &&
-      (filters.audience === 'all' || resource.audience.includes(filters.audience as any)) &&
-      resource.language === filters.language
+      (filters.audience === 'all' || resource.audience.includes(filters.audience as any))
     );
   });
 
@@ -103,12 +172,12 @@ export default function EducationalHub() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Learn About <span className="text-[#DB2777]">Menstrual Health</span>
+              {t('learn.title')} <span className="text-[#DB2777]">{t('learn.subtitle')}</span>
             </h1>
             <p className="mt-2 max-w-2xl mx-auto text-base text-gray-600 sm:mt-3">
-              Evidence-based resources to help you understand and manage your menstrual health
+              {t('learn.description')}
             </p>
-            
+
             {/* Search Bar */}
             <div className="mt-8 max-w-2xl mx-auto">
               <div className="relative">
@@ -118,7 +187,7 @@ export default function EducationalHub() {
                 <input
                   type="text"
                   className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#DB2777] focus:ring-offset-1 text-gray-900 text-sm"
-                  placeholder="Search resources..."
+                  placeholder={t('learn.searchPlaceholder')}
                 />
               </div>
             </div>
@@ -131,47 +200,47 @@ export default function EducationalHub() {
         <div className="mt-8">
           {/* Filters */}
           <div className="bg-white shadow-sm rounded-lg p-5 mb-8 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter Resources</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('learn.filterResources')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
+                  {t('learn.category')}
                 </label>
                 <div className="relative">
                   <select
                     id="category"
                     value={filters.category}
-                    onChange={(e) => setFilters({...filters, category: e.target.value})}
+                    onChange={(e) => setFilters({ ...filters, category: e.target.value })}
                     className="appearance-none block w-full pl-4 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 rounded-lg transition-all duration-200"
                   >
-                    <option value="all">All Categories</option>
-                    <option value="basics">Basics</option>
-                    <option value="myths">Myths & Facts</option>
-                    <option value="emotional">Emotional Health</option>
-                    <option value="professional">Professional Help</option>
-                    <option value="support">Supporting Others</option>
+                    <option value="all">{t('learn.allCategories')}</option>
+                    <option value="basics">{t('learn.basics')}</option>
+                    <option value="myths">{t('learn.myths')}</option>
+                    <option value="emotional">{t('learn.emotional')}</option>
+                    <option value="professional">{t('learn.professional')}</option>
+                    <option value="support">{t('learn.support')}</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <ChevronDown className="h-4 w-4" />
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <label htmlFor="audience" className="block text-sm font-medium text-gray-700 mb-2">
-                  For
+                  {t('learn.for')}
                 </label>
                 <div className="relative">
                   <select
                     id="audience"
                     value={filters.audience}
-                    onChange={(e) => setFilters({...filters, audience: e.target.value})}
+                    onChange={(e) => setFilters({ ...filters, audience: e.target.value })}
                     className="appearance-none block w-full pl-4 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 rounded-lg transition-all duration-200"
                   >
-                    <option value="all">Everyone</option>
-                    <option value="teens">Teens</option>
-                    <option value="adults">Adults</option>
-                    <option value="allies">Supporters</option>
+                    <option value="all">{t('learn.everyone')}</option>
+                    <option value="teens">{t('learn.teens')}</option>
+                    <option value="adults">{t('learn.adults')}</option>
+                    <option value="allies">{t('learn.supporters')}</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <ChevronDown className="h-4 w-4" />
@@ -181,13 +250,13 @@ export default function EducationalHub() {
 
               <div>
                 <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-2">
-                  Language
+                  {t('learn.language')}
                 </label>
                 <div className="relative">
                   <select
                     id="language"
                     value={filters.language}
-                    onChange={(e) => setFilters({...filters, language: e.target.value})}
+                    onChange={(e) => setFilters({ ...filters, language: e.target.value })}
                     className="appearance-none block w-full pl-4 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 rounded-lg transition-all duration-200"
                   >
                     <option value="en">English</option>
@@ -207,23 +276,23 @@ export default function EducationalHub() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-800">
-                {filters.category === 'all' ? 'All Resources' : 
-                 filters.category.charAt(0).toUpperCase() + filters.category.slice(1) + ' Resources'}
-                {filters.audience !== 'all' && ` for ${filters.audience}`}
+                {filters.category === 'all' ? t('learn.allResources') :
+                  filters.category.charAt(0).toUpperCase() + filters.category.slice(1) + ' ' + t('learn.resources')}
+                {filters.audience !== 'all' && ` ${t('learn.for')} ${filters.audience}`}
               </h2>
               <p className="text-sm text-gray-500">
-                {filteredResources.length} {filteredResources.length === 1 ? 'resource' : 'resources'} found
+                {filteredResources.length} {filteredResources.length === 1 ? t('learn.resource') : t('learn.resources')} {t('learn.found')}
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
               {filteredResources.map((resource) => {
                 const Icon = categoryIcons[resource.category];
                 const categoryColor = categoryColors[resource.category].split(' ')[0];
-                
+
                 return (
-                  <div 
-                    key={resource.id} 
+                  <div
+                    key={resource.id}
                     className="group bg-white overflow-hidden rounded-lg shadow-sm hover:shadow transition-all duration-200 border border-gray-200 hover:border-[#FCE7F3]"
                   >
                     <div className="p-5">
@@ -234,10 +303,10 @@ export default function EducationalHub() {
                         <div className="ml-4 flex-1">
                           <div className="flex items-center justify-between">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryColors[resource.category]}`}>
-                              {resource.category === 'basics' ? 'Basics' : 
-                               resource.category === 'myths' ? 'Myths & Facts' :
-                               resource.category === 'emotional' ? 'Emotional Health' :
-                               resource.category === 'professional' ? 'Professional Help' : 'Supporting Others'}
+                              {resource.category === 'basics' ? 'Basics' :
+                                resource.category === 'myths' ? 'Myths & Facts' :
+                                  resource.category === 'emotional' ? 'Emotional Health' :
+                                    resource.category === 'professional' ? 'Professional Help' : 'Supporting Others'}
                             </span>
                             {resource.isNew && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
@@ -246,12 +315,12 @@ export default function EducationalHub() {
                             )}
                           </div>
                           <h3 className="mt-2 text-base font-semibold text-gray-800 group-hover:text-[#DB2777] transition-colors">
-                            {resource.title}
+                            {resource.translatedTitle || resource.title}
                           </h3>
                           <p className="mt-2 text-sm text-gray-500 line-clamp-2">
-                            {resource.content}
+                            {resource.translatedContent || resource.content}
                           </p>
-                          
+
                           <div className="mt-4 flex items-center justify-between">
                             <div className="flex space-x-2">
                               {resource.audience.map((aud) => (
@@ -267,7 +336,7 @@ export default function EducationalHub() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
                         <button
                           type="button"
@@ -278,7 +347,7 @@ export default function EducationalHub() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                           </svg>
                         </button>
-                        
+
                         <div className="flex items-center space-x-2">
                           <button className="p-1.5 rounded-full text-gray-400 hover:text-[#DB2777] hover:bg-[#FCE7F3] transition-colors">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,7 +366,7 @@ export default function EducationalHub() {
                 );
               })}
             </div>
-            
+
             {filteredResources.length === 0 && (
               <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
                 <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
